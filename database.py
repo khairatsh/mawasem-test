@@ -1,18 +1,23 @@
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# مسار ملف قاعدة بيانات SQLite الذي سيتم إنشاؤه
-SQLALCHEMY_DATABASE_URL = "sqlite:///./mawasem.db"
+# جلب رابط قاعدة البيانات السحابية من إعدادات Render
+# (وإذا لم يجده، سيستخدم SQLite للتجارب المحلية على جهازك)
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./mawasem.db")
 
-# إنشاء محرك الاتصال (engine)
-# check_same_thread=False مطلوب فقط مع SQLite لتفادي مشاكل الاتصال المتعدد
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# تصحيح بسيط: SQLAlchemy يفضل أن يبدأ الرابط بـ postgresql:// وليس postgres://
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# إنشاء "جلسة" للتحدث مع قاعدة البيانات
+# إعداد محرك الاتصال بناءً على نوع القاعدة
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    # إعدادات خاصة بـ SQLite فقط
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # إعدادات PostgreSQL السحابية
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# الصنف الأساسي الذي سنبني عليه جداولنا
 Base = declarative_base()
