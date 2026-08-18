@@ -232,8 +232,17 @@ def update_delivery_fee(new_fee: str, db: Session = Depends(get_db), admin: mode
     db.commit()
     return {"message": "تم تحديث رسوم التوصيل بنجاح"}
 
+
+@app.get("/api/admin/verify")
+def verify_admin_access(admin: models.User = Depends(get_current_admin)):
+    # إذا وصل الكود إلى هنا، فهذا يعني أن المستخدم هو المدير فعلاً
+    return {"status": "ok"}
+
+
+
+
 @app.get("/api/admin/export-users")
-def export_users_to_excel(db: Session = Depends(get_db)):
+def export_users_to_excel(db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     users = db.query(models.User.full_name, models.User.phone_number).all()
     if not users:
         raise HTTPException(status_code=404, detail="لا يوجد مستخدمون مسجلون")
