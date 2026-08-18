@@ -2,7 +2,7 @@ import hashlib
 import jwt
 from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -89,6 +89,21 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         raise HTTPException(status_code=401, detail="المستخدم غير موجود")
         
     return user
+
+
+# ==========================================
+# دالة التحقق من صلاحيات الإدارة (حماية لوحة التحكم)
+# ==========================================
+def get_current_admin(current_user: models.User = Depends(get_current_user)):
+    # ضع رقم هاتفك الذي سجلت به حسابك كمدير هنا
+    ADMIN_PHONE = "0576394221" 
+    
+    if current_user.phone_number != ADMIN_PHONE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="غير مصرح لك بالوصول إلى لوحة التحكم"
+        )
+    return current_user
 
 # ==========================================
 # مسارات الواجهة البرمجية (API Routes)
@@ -285,3 +300,20 @@ def export_users_to_excel(db: Session = Depends(get_db)):
     )
     response.headers["Content-Disposition"] = "attachment; filename=mawasem_customers.csv"
     return response
+
+
+# لاحظ إضافة admin: models.User = Depends(get_current_admin)
+@app.post("/api/admin/settings/delivery")
+def update_delivery_fee(new_fee: str, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    # تم تغيير Setting إلى models.Setting في الاستعلام
+    fee_setting = db.query(models.Setting).filter(models.Setting.key == "delivery_fee").first()
+    
+    if fee_setting:
+        fee_setting.value = new_fee
+    else:
+        # تم التغيير هنا أيضاً عند إنشاء إعداد جديد
+        new_setting = models.Setting(key="delivery_fee", value=new_fee)
+        db.add(new_setting)
+        
+    db.commit()
+    return {"message": "تم تحديث رسوم التوصيل بنجاح"}
