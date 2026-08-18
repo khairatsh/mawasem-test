@@ -47,11 +47,16 @@ SECRET_KEY = "mawasem_super_secret_key_2026"
 ALGORITHM = "HS256"
 
 def get_password_hash(password: str):
+    # 1. تحويل كلمة المرور إلى نص مشفر
     sha256_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    # 2. الخدعة: نقص النص ليكون 72 حرفاً كحد أقصى لكي لا يغضب bcrypt!
+    sha256_password = sha256_password[:72] 
     return pwd_context.hash(sha256_password)
 
 def verify_password(plain_password: str, hashed_password: str):
+    # نطبق نفس الخدعة عند التحقق من الدخول
     sha256_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+    sha256_password = sha256_password[:72]
     return pwd_context.verify(sha256_password, hashed_password)
 
 def create_access_token(data: dict):
